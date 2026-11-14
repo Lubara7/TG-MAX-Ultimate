@@ -49,6 +49,11 @@ def assert_login_layout(nodes, strings, qualifier):
     policy_top = list(map(int, re.findall(r'\d+', policy.get('bounds'))))[1]
     assert policy_top - phone_bottom >= 8, 'No space between the phone input and legal text'
     assert not any(n.get('checkable') == 'true' for n in nodes), 'Telegram-only login checkbox remains visible'
+    title = next(n for n in nodes if n.get('text') == strings['phone_title'])
+    help_button = next(n for n in nodes if n.get('content-desc') == labels['TgMaxHelp'])
+    title_top = list(map(int, re.findall(r'\d+', title.get('bounds'))))[1]
+    help_bottom = list(map(int, re.findall(r'\d+', help_button.get('bounds'))))[3]
+    assert title_top - help_bottom >= 8, 'Phone title overlaps the login toolbar'
 
 
 try:

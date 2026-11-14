@@ -107,6 +107,25 @@
         }
     }
 
+    private void layoutMaxPhoneContent() {
+        if (currentViewNum != VIEW_PHONE_INPUT || maxHelpButton == null || maxPolicy == null
+                || !(views[VIEW_PHONE_INPUT] instanceof PhoneView)) return;
+        if (maxHelpButton.getVisibility() != View.VISIBLE || maxPolicy.getVisibility() != View.VISIBLE) return;
+        PhoneView phone = (PhoneView) views[VIEW_PHONE_INPUT];
+        if (phone.getVisibility() != View.VISIBLE) return;
+        int[] titlePosition = new int[2], helpPosition = new int[2];
+        phone.titleView.getLocationInWindow(titlePosition);
+        maxHelpButton.getLocationInWindow(helpPosition);
+        int offset = helpPosition[1] + maxHelpButton.getHeight() + dp(12) - titlePosition[1];
+        if (offset <= 0) return;
+        int[] inputPosition = new int[2], policyPosition = new int[2];
+        phone.phoneOutlineView.getLocationInWindow(inputPosition);
+        maxPolicy.getLocationInWindow(policyPosition);
+        int available = policyPosition[1] - dp(8) - inputPosition[1] - phone.phoneOutlineView.getHeight();
+        offset = Math.min(offset, Math.max(0, available));
+        for (int i = 0; i < phone.getChildCount(); i++) phone.getChildAt(i).offsetTopAndBottom(offset);
+    }
+
     private void showMaxLanguages() {
         if (getParentActivity() == null) return;
         Context context = getParentActivity();

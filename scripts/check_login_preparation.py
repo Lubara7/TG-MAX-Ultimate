@@ -43,6 +43,7 @@ assert 'syncContactsBox = new CheckBoxCell' not in phone
 assert 'testBackendCheckBox = new CheckBoxCell' not in phone
 assert 'showDebugMenu();' not in phone
 assert 'setPadding(0, dp(32), 0, dp(152));' in phone
+assert 'layoutMaxPhoneContent();' in login
 assert '@mipmap/maxgram_launcher' in (resources / 'values-v31/styles.xml').read_text()
 for style in resources.rglob('styles.xml'):
     if 'windowSplashScreenAnimatedIcon' in style.read_text():

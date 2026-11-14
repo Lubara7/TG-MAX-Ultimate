@@ -445,6 +445,8 @@ def configure_phone_login(target):
            '        floatingButton.addAdditionalView(floatingButtonIcon);\n        setupMaxLoginControls(context);')
     change(login, 'floatingButton.setContentDescription(getString(R.string.Done));',
            'floatingButton.setContentDescription(getString(R.string.Continue));')
+    change(login, 'sizeNotifierFrameLayout = new SizeNotifierFrameLayout(context) {\n            @Override\n            protected void onMeasure',
+           'sizeNotifierFrameLayout = new SizeNotifierFrameLayout(context) {\n            @Override\n            protected void onLayout(boolean changed, int left, int top, int right, int bottom) {\n                super.onLayout(changed, left, top, right, bottom);\n                layoutMaxPhoneContent();\n            }\n\n            @Override\n            protected void onMeasure')
     change(login, '                super.onMeasure(widthMeasureSpec, heightMeasureSpec);\n            }\n        };\n        sizeNotifierFrameLayout.setDelegate',
            '                layoutMaxLoginControls(keyboardOffset, statusBarHeight);\n                super.onMeasure(widthMeasureSpec, heightMeasureSpec);\n            }\n        };\n        sizeNotifierFrameLayout.setDelegate')
     change(login, '        currentViewNum = page;', '        currentViewNum = page;\n        updateMaxLoginControls();', 2)
