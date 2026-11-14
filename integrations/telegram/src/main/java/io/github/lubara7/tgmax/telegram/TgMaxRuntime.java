@@ -47,7 +47,10 @@ public final class TgMaxRuntime {
 
     public void preparePhoneAuth(String userAgent) {
         client.device().language = TgMaxLocales.networkCode(LocaleController.getLocaleStringIso639());
-        if (userAgent != null && !userAgent.isEmpty()) client.device().userAgent = userAgent;
+        if (userAgent != null && !userAgent.isEmpty()) {
+            local.webUserAgent(userAgent);
+            client.device().setUserAgent(userAgent);
+        }
     }
 
     public void setCaptchaHandler(Function<String, CompletableFuture<String>> handler) { captchaHandler = handler; }
@@ -83,9 +86,15 @@ public final class TgMaxRuntime {
         models = new TgMaxModels(ids);
         executor = Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "tgmax-account-" + account); t.setDaemon(true); return t; });
         android.util.DisplayMetrics display = context.getResources().getDisplayMetrics();
+        String version = local.profileVersion(recommendedWebVersion(context));
+        boolean legacy = local.legacyProfile();
+        String screen = legacy ? display.widthPixels + "x" + display.heightPixels
+                : String.format(java.util.Locale.US, "%.0fx%.0f %.1fx", display.heightPixels / display.density,
+                        display.widthPixels / display.density, display.density);
         MaxDevice device = new MaxDevice(local.deviceId(), TgMaxLocales.networkCode(LocaleController.getLocaleStringIso639()),
-                "Android " + Build.VERSION.RELEASE, display.widthPixels + "x" + display.heightPixels,
-                TimeZone.getDefault().getID(), "MAXGRAM-CLIENT/0.2 Android/" + Build.VERSION.SDK_INT);
+                legacy ? "Android " + Build.VERSION.RELEASE : "Android", screen, TimeZone.getDefault().getID(), local.webUserAgent(),
+                legacy ? MaxSessionProfile.legacyWeb(version) : MaxSessionProfile.web(version, null),
+                legacy ? TgMaxLocales.networkCode(LocaleController.getLocaleStringIso639()) : deviceLanguage());
         client = new MaxClient(new OkHttpClient.Builder().connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS).build(), device);
         client.setPrivacy(privacy);
         api = new MaxApi(client);
@@ -97,6 +106,35 @@ public final class TgMaxRuntime {
             ConnectionsManager.onConnectionStateChanged(connected ? 3 : 1, account);
             if (!connected) { login = null; allDialogs = null; }
         });
+        if (!device.ready().isDone()) new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            try {
+                String agent = android.webkit.WebSettings.getDefaultUserAgent(context);
+                local.webUserAgent(agent);
+                device.setUserAgent(agent);
+            } catch (RuntimeException failure) { device.userAgentUnavailable(); }
+        });
+    }
+
+    private static String recommendedWebVersion(Context context) {
+        try (java.io.InputStream stream = context.getAssets().open("tgmax-session-profiles.json")) {
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            byte[] block = new byte[4096]; int count;
+            while ((count = stream.read(block)) != -1) {
+                if (bytes.size() + count > 65536) throw new MaxException("MAX_PROFILE_CATALOG_INVALID");
+                bytes.write(block, 0, count);
+            }
+            org.json.JSONObject catalog = new org.json.JSONObject(bytes.toString("UTF-8"));
+            org.json.JSONObject profile = catalog.getJSONObject("profiles").getJSONObject(catalog.getString("activeProfile"));
+            if (!"WEB".equals(profile.getString("deviceType")) || !"WEBSOCKET".equals(profile.getString("transport")))
+                throw new MaxException("MAX_TRANSPORT_PROFILE_MISMATCH");
+            return profile.getString("appVersion");
+        } catch (Exception failure) { throw new MaxException("MAX_PROFILE_CATALOG_INVALID", failure); }
+    }
+
+    private static String deviceLanguage() {
+        android.os.LocaleList locales = android.content.res.Resources.getSystem().getConfiguration().getLocales();
+        String language = locales.isEmpty() ? "en" : locales.get(0).getLanguage();
+        return language.isEmpty() ? "en" : language;
     }
 
     public MaxPrivacyPolicy privacy() { return privacy; }

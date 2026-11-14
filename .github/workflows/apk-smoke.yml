@@ -15,7 +15,7 @@ permissions:
   actions: read
 jobs:
   phone-screen:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.event == 'workflow_dispatch' || contains(github.event.workflow_run.head_commit.message, '[apk]') || contains(github.event.workflow_run.head_commit.message, '[release]')))
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:

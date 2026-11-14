@@ -531,6 +531,8 @@ def install_max_assets(target):
     import base64
     import gzip
     resources = target / "TMessagesProj/src/main/res"
+    shutil.copy2(ROOT / "integrations/max-session-profiles.json",
+                 target / "TMessagesProj/src/main/assets/tgmax-session-profiles.json")
     source = ROOT / "integrations/telegram/resources"
     shutil.copytree(source, resources, dirs_exist_ok=True)
     for path in resources.rglob("*.b64"):

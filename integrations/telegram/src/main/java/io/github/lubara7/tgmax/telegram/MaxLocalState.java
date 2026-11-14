@@ -6,6 +6,7 @@ import android.security.keystore.KeyProperties;
 import android.util.AtomicFile;
 import io.github.lubara7.tgmax.max.MaxException;
 import io.github.lubara7.tgmax.max.StableIds;
+import io.github.lubara7.tgmax.max.MaxSessionProfile;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -44,10 +45,36 @@ final class MaxLocalState implements StableIds.Storage {
         android.content.SharedPreferences p = context.getSharedPreferences("max_device_" + account, Context.MODE_PRIVATE);
         String id = p.getString("id", null);
         if (id == null) {
-            id = java.util.UUID.randomUUID().toString();
+            id = MaxSessionProfile.newWebDeviceId();
             if (!p.edit().putString("id", id).commit()) throw new MaxException("MAX_STORAGE");
         }
         return id;
+    }
+
+    String webUserAgent() {
+        return context.getSharedPreferences("max_device_" + account, Context.MODE_PRIVATE).getString("web_user_agent", null);
+    }
+
+    void webUserAgent(String value) {
+        if (!context.getSharedPreferences("max_device_" + account, Context.MODE_PRIVATE).edit()
+                .putString("web_user_agent", value).commit()) throw new MaxException("MAX_STORAGE");
+    }
+
+    String profileVersion(String recommended) {
+        android.content.SharedPreferences preferences = context.getSharedPreferences("max_device_" + account, Context.MODE_PRIVATE);
+        String version = preferences.getString("app_version", null);
+        if (version == null) {
+            File base = sessionFile.getBaseFile();
+            boolean legacy = base.exists() || new File(base.getPath() + ".bak").exists();
+            version = legacy ? "26.8.8" : recommended;
+            if (!preferences.edit().putString("app_version", version).putBoolean("legacy_profile", legacy).commit())
+                throw new MaxException("MAX_STORAGE");
+        }
+        return version;
+    }
+
+    boolean legacyProfile() {
+        return context.getSharedPreferences("max_device_" + account, Context.MODE_PRIVATE).getBoolean("legacy_profile", false);
     }
 
     @Override public synchronized Map<String, String> load() {

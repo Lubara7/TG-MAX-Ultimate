@@ -6,6 +6,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import okhttp3.OkHttpClient;
 import okhttp3.Response;
 import okhttp3.WebSocket;
@@ -34,6 +35,40 @@ public class MaxClientTest {
                 new MaxDevice("synthetic-device", "en", "Android", "1080x1920", "UTC", "TG-MAX-Test"),
                 server.url("/websocket").toString(), timeout);
         return client;
+    }
+
+    @Test public void handshakeAndHttpHeaderUseTheSameProfileSnapshot() throws Exception {
+        AtomicReference<String> initAgent = new AtomicReference<>();
+        WebSocketListener listener = new WebSocketListener() {
+            @Override public void onMessage(WebSocket ws, ByteString bytes) {
+                MaxFrame frame = codec.decode(bytes.toByteArray());
+                initAgent.set(Maps.string(Maps.object(Maps.object(frame.payload).get("userAgent")).get("headerUserAgent")));
+                respond(ws, frame, Maps.of());
+            }
+        };
+        server.enqueue(new MockResponse().withWebSocketUpgrade(listener).setHeadersDelay(300, TimeUnit.MILLISECONDS));
+        server.start();
+        MaxDevice device = new MaxDevice("0123456789abcdef", "en", "Android 14", "800x360 3.0x", "UTC", "browser-before");
+        client = new MaxClient(new OkHttpClient(), device, server.url("/websocket").toString(), 2000);
+        CompletableFuture<Void> connection = client.connect();
+        okhttp3.mockwebserver.RecordedRequest request = server.takeRequest(2, TimeUnit.SECONDS);
+        assertNotNull(request);
+        device.setUserAgent("browser-after");
+        connection.get(5, TimeUnit.SECONDS);
+        assertEquals("browser-before", request.getHeader("User-Agent"));
+        assertEquals(request.getHeader("User-Agent"), initAgent.get());
+    }
+
+    @Test public void closingBeforeBrowserInitializationCompletesWaiters() throws Exception {
+        server.start();
+        MaxDevice device = new MaxDevice("0123456789abcdef", "en", "Android 14", "800x360 3.0x", "UTC", null);
+        client = new MaxClient(new OkHttpClient(), device, server.url("/websocket").toString(), 2000);
+        CompletableFuture<Void> connection = client.connect();
+        assertFalse(connection.isDone());
+        client.close();
+        try { connection.get(1, TimeUnit.SECONDS); fail("Closed client kept waiting for a profile"); }
+        catch (ExecutionException expected) { assertEquals("CLIENT_CLOSED", ((MaxException) root(expected)).code); }
+        assertEquals(0, server.getRequestCount());
     }
 
     @Test public void handshakePrecedesAuthAndPushCannotConsumeAResponse() throws Exception {

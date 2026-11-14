@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "activeProfile": "legacy-web",
+  "activeProfile": "web-26.11.6",
   "profiles": {
     "legacy-web": {
       "transport": "WEBSOCKET",
@@ -8,6 +8,19 @@
       "appVersion": "26.8.8",
       "status": "unverified",
       "note": "Existing prototype profile. No 72-hour observation or current-version acceptance has been recorded."
+    },
+    "web-26.11.6": {
+      "transport": "WEBSOCKET",
+      "deviceType": "WEB",
+      "appVersion": "26.11.6",
+      "endpoint": "wss://api.oneme.ru/websocket",
+      "status": "source-reviewed-live-acceptance-pending",
+      "sourceUrl": "https://web.max.ru/_app/immutable/chunks/BWj-8FBy.js",
+      "sourceSha256": "08c0707849b0df2a72e052412aebaeff430a7898deb96f613c337289a4f918df",
+      "reviewedAtUtc": "2026-11-14T13:21:40.140682Z",
+      "deviceIdKind": "UUID",
+      "protocolSourceUrl": "https://web.max.ru/_app/immutable/chunks/RmCTWSHK.js",
+      "protocolSourceSha256": "5902291198938920c904b63e67cff4fdb26c5de08bf0ae8d423263533fb793b7"
     }
   },
   "reviewedSources": {

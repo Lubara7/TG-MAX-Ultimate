@@ -40,6 +40,7 @@ public final class MaxClient implements Closeable {
     private volatile MaxPrivacyPolicy privacy = MaxPrivacyPolicy.DEFAULT;
     private volatile boolean interactive = true;
     private volatile Map<String, Object> handshake = Maps.of();
+    private final CompletableFuture<Void> closedSignal = new CompletableFuture<>();
 
     public MaxClient(OkHttpClient http, MaxDevice device) { this(http, device, ENDPOINT, 30_000); }
 
@@ -54,21 +55,27 @@ public final class MaxClient implements Closeable {
     }
 
     public CompletableFuture<Void> connect() {
+        return CompletableFuture.anyOf(device.ready(), closedSignal).thenCompose(unused -> connectPrepared());
+    }
+
+    private CompletableFuture<Void> connectPrepared() {
         synchronized (lock) {
             if (closed) return failed(new MaxException("CLIENT_CLOSED"));
             if (ready) return CompletableFuture.completedFuture(null);
             if (connecting != null) return connecting;
+            final Map<String, Object> init = device.handshake();
             CompletableFuture<Void> attempt = new CompletableFuture<>();
             connecting = attempt;
-            socket = http.newWebSocket(new Request.Builder().url(endpoint)
-                    .header("Origin", "https://web.max.ru").header("User-Agent", device.userAgent).build(),
+            try {
+                socket = http.newWebSocket(new Request.Builder().url(endpoint)
+                    .header("Origin", "https://web.max.ru").header("User-Agent", Maps.string(Maps.object(init.get("userAgent")).get("headerUserAgent"))).build(),
                     new WebSocketListener() {
                         @Override public void onOpen(WebSocket ws, Response response) {
                             synchronized (lock) {
                                 if (connecting != attempt || closed) { ws.cancel(); return; }
                                 socket = ws;
                             }
-                            rawRequest(MaxOpcode.INIT, device.handshake()).whenComplete((value, error) -> {
+                            rawRequest(MaxOpcode.INIT, init).whenComplete((value, error) -> {
                                 if (error != null) { disconnected(ws, new MaxException("HANDSHAKE_FAILED", error)); return; }
                                 synchronized (lock) {
                                     if (connecting != attempt || closed) return;
@@ -104,6 +111,10 @@ public final class MaxClient implements Closeable {
 
                         @Override public void onClosing(WebSocket ws, int code, String reason) { ws.close(code, null); }
                     });
+            } catch (RuntimeException failure) {
+                connecting = null;
+                attempt.completeExceptionally(new MaxException("CONNECT_SETUP_FAILED", failure));
+            }
             return attempt;
         }
     }
@@ -220,6 +231,7 @@ public final class MaxClient implements Closeable {
         synchronized (lock) {
             if (closed) return;
             closed = true;
+            closedSignal.completeExceptionally(new MaxException("CLIENT_CLOSED"));
             WebSocket ws = socket;
             if (ws != null) disconnected(ws, new MaxException("CLIENT_CLOSED"));
             scheduler.shutdownNow();
