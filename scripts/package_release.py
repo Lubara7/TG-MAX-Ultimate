@@ -51,6 +51,8 @@ def main():
     element = candidates[0]
     if element['versionName'] != release['version']:
         raise SystemExit('APK version differs from release.json')
+    if element['versionCode'] != release['versionCode']:
+        raise SystemExit('APK versionCode differs from release.json')
     apk = metadata.parent / element['outputFile']
     with zipfile.ZipFile(apk) as archive:
         names = archive.namelist()
@@ -85,6 +87,16 @@ def main():
         digest = hashlib.file_digest(file.open('rb'), 'sha256').hexdigest()
         hashes.append(f'{digest}  {file.name}')
     (output / 'SHA256SUMS.txt').write_text('\n'.join(hashes) + '\n')
+    catalog_path = ROOT / 'integrations/max-session-profiles.json'
+    catalog = json.loads(catalog_path.read_text())
+    profile = catalog['profiles'][catalog['activeProfile']]
+    provenance = {
+        'schema': 1, 'status': 'prototype', 'version': release['version'], 'tag': release['tag'],
+        'sourceCommit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
+        'sessionProfileSha256': hashlib.sha256(catalog_path.read_bytes()).hexdigest(),
+        'sessionAppVersion': profile['appVersion'], 'sessionProfile': catalog['activeProfile'],
+    }
+    (output / 'build-provenance.json').write_text(json.dumps(provenance, indent=2) + '\n')
     print(json.dumps({'apk': str(destination), 'apk_bytes': destination.stat().st_size,
                       'source_bytes': source.stat().st_size, 'version': release['version']}, indent=2))
 

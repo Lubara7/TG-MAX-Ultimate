@@ -1,0 +1,37 @@
+name: Publish verified MaxGram APK
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: Run containing the APK that completed the acceptance test
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Retrieve the tested APK and matching source
+        run: |
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]]
+          mkdir -p dist
+          gh run download "$BUILD_RUN_ID" -n maxgram-apk -D dist
+          gh run download "$BUILD_RUN_ID" -n maxgram-source -D dist
+          (cd dist && sha256sum --check --strict SHA256SUMS.txt)
+      - name: Validate all acceptance evidence for these exact bytes
+        run: |
+          python3 scripts/validate_release.py --apk dist/*.apk --provenance dist/build-provenance.json
+      - name: Publish the already tested APK without rebuilding it
+        run: |
+          RELEASE_TAG=$(python3 -c 'import json; print(json.load(open("dist/build-provenance.json"))["tag"])')
+          SOURCE_REVISION=$(python3 -c 'import json; print(json.load(open("dist/build-provenance.json"))["sourceCommit"])')
+          gh release create "$RELEASE_TAG" dist/*.apk dist/SHA256SUMS.txt dist/signature-verification.txt dist/build-provenance.json dist/*-source.tar.gz --target "$SOURCE_REVISION" --prerelease --title "MAXGRAM $RELEASE_TAG" --notes-file dist/release-notes.md

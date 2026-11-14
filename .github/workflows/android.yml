@@ -42,6 +42,8 @@ jobs:
           :auth-harness:lintDemoDebug :auth-harness:lintProductionDebug
           :auth-harness:assembleDemoDebug :auth-harness:assembleProductionDebug
           :core:data:assembleDemoDebugAndroidTest
+      - name: Verify release acceptance gate
+        run: python3 -m unittest discover -s scripts -p 'test_release_validation.py'
       - name: Check pinned Telegram integration
         run: |
           git submodule update --init --depth 1 upstream/telegram

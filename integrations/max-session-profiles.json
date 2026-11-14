@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "activeProfile": "legacy-web",
+  "profiles": {
+    "legacy-web": {
+      "transport": "WEBSOCKET",
+      "deviceType": "WEB",
+      "appVersion": "26.8.8",
+      "status": "unverified",
+      "note": "Existing prototype profile. No 72-hour observation or current-version acceptance has been recorded."
+    }
+  },
+  "reviewedSources": {
+    "PyMax": "c4cb917d354a1179be625925530d72c8aaa969ff",
+    "Komet": "7bbb73bd2c05877e48b37f6ec6f096471a341404",
+    "max-api-docs": "82ff271bdfc83f2247547f9937e578716d2f6160"
+  }
+}

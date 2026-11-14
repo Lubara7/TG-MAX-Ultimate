@@ -1,4 +1,4 @@
-name: Telegram APK release
+name: Build MaxGram APK
 
 on:
   push:
@@ -10,14 +10,14 @@ permissions:
 
 jobs:
   build-release:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[release]')
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[apk]') || contains(github.event.head_commit.message, '[release]')
     concurrency:
       group: telegram-release
       cancel-in-progress: true
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     permissions:
-      contents: write
+      contents: read
     env:
       NATIVE_TARGET: arm64-v8a
       GRADLE_OPTS: -Dorg.gradle.workers.max=2
@@ -70,16 +70,23 @@ jobs:
           cp docs/release-notes.md dist/release-notes.md
       - uses: actions/upload-artifact@v6
         with:
-          name: tgmax-telegram-apk
-          path: dist/*
+          name: maxgram-apk
+          path: |
+            dist/*.apk
+            dist/SHA256SUMS.txt
+            dist/signature-verification.txt
+            dist/build-provenance.json
+            dist/apk-manifest.txt
           if-no-files-found: error
-      - name: Publish prerelease with APK
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          RELEASE_TAG=$(python3 -c 'import json; print(json.load(open("release.json"))["tag"])')
-          gh release create "$RELEASE_TAG" dist/*.apk dist/SHA256SUMS.txt dist/signature-verification.txt dist/*-source.tar.gz --target "$GITHUB_SHA" --prerelease --title "MAXGRAM CLIENT $RELEASE_TAG — Telegram alpha" --notes-file docs/release-notes.md
+      - uses: actions/upload-artifact@v6
+        with:
+          name: maxgram-source
+          path: |
+            dist/*-source.tar.gz
+            dist/release-notes.md
+          if-no-files-found: error
+      - name: Record prototype status
+        run: echo 'Prototype APK built. Publication requires the separate verified-release workflow and matching 72-hour acceptance evidence.' >> "$GITHUB_STEP_SUMMARY"
       - name: Upload build reports
         if: always()
         uses: actions/upload-artifact@v6

@@ -1,30 +1,44 @@
-name: Install published APK
+name: Install prototype APK
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/apk-smoke.yml', 'scripts/check_phone_ui.py', 'scripts/CodecInstrumentation.java', 'scripts/codec-test-AndroidManifest.xml', 'scripts/CodecDeviceSmoke.java']
+    inputs:
+      build_run_id:
+        description: Build MaxGram APK run containing the prototype
+        required: true
+        type: string
   workflow_run:
-    workflows: ["Telegram APK release", "Publish built APK"]
+    workflows: ["Build MaxGram APK"]
     types: [completed]
     branches: [main]
 permissions:
   contents: read
+  actions: read
 jobs:
   phone-screen:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !contains(github.event.head_commit.message, '[release]')) || (github.event.workflow_run.conclusion == 'success' && (contains(github.event.workflow_run.head_commit.message, '[release]') || github.event.workflow_run.name == 'Publish built APK'))
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-      - name: Download and verify the published APK
+      - name: Resolve the prototype build
+        id: build
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILD_RUN_ID: ${{ github.event.workflow_run.id || inputs.build_run_id }}
         run: |
-          tag=$(jq -r .tag release.json)
-          gh release download "$tag" -p '*.apk' -p SHA256SUMS.txt -p signature-verification.txt
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]]
+          SOURCE_REVISION=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID" --jq .head_sha)
+          [[ "$SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          echo "run_id=$BUILD_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$SOURCE_REVISION" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.build.outputs.source_sha }}
+      - name: Download and verify the prototype APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN_ID: ${{ steps.build.outputs.run_id }}
+        run: |
+          gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" -n maxgram-apk
           awk '$2 ~ /\.apk$/ {print}' SHA256SUMS.txt | sha256sum --check --strict
       - uses: actions/setup-java@v6
         with:
@@ -43,7 +57,7 @@ jobs:
           report = pathlib.Path('signature-verification.txt').read_text()
           expected = re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)', report)[1].lower()
           assert hashlib.sha256(certificate).hexdigest() == expected
-          print('Published APK matches the saved alpha signing key')
+          print('Prototype APK matches the saved alpha signing key')
           PYCODE
       - uses: android-actions/setup-android@v3
         with:

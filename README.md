@@ -2,6 +2,8 @@
 
 # MAXGRAM CLIENT
 
+Specification v2 is in progress: see [implementation and acceptance status](docs/spec-v2-status.md). APKs remain prototypes. Automatic release publication is disabled; publication requires matching live-account acceptance evidence and a completed 72-hour observation. Neither a session profile nor a successful observation guarantees immunity from later account restrictions.
+
 **The MAX messenger. The Telegram experience.**
 
 Unofficial Android client built on [official Telegram Android](https://github.com/DrKLO/Telegram), with a native MAX backend based on [Komet](https://github.com/KometTeam/Komet).

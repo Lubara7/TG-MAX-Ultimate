@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "status": "pending",
+  "apkSha256": null,
+  "sourceCommit": null,
+  "sessionProfileSha256": null,
+  "officialVersionEvidence": {
+    "appVersion": null,
+    "sourceUrl": null,
+    "reviewedAtUtc": null,
+    "confirmed": false
+  },
+  "observation": {
+    "startedAtUtc": null,
+    "finishedAtUtc": null,
+    "banObserved": null
+  },
+  "checks": {
+    "phoneTokenAndDeviceQrLogin": false,
+    "chatsAndMessagesBothDirections": false,
+    "allMediaBothDirections": false,
+    "androidContactNames": false,
+    "botNamesAvatarsAndStatus": false,
+    "presenceMapping": false,
+    "formattingAndLinks": false,
+    "noDeadButtonsOrEmptyScreens": false,
+    "noCrashes": false,
+    "firstLaunchDisclaimer": false
+  }
+}
