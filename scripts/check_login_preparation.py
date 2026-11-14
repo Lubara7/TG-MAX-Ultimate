@@ -37,13 +37,17 @@ for qualifier in ['values', 'values-ru', 'values-es', 'values-pt-rBR', 'values-u
     assert strings['AppName'] == 'MAXGRAM CLIENT'
 print('MAXGRAM name, seven login translations, help, legal footer and call screen preparation checked')
 
-assert 'syncContactsBox.setVisibility(View.GONE);' in login
-assert 'setPadding(0, dp(32), 0, dp(80));' in login
+phone = login[login.index('public class PhoneView'):login.index('public class LoginActivitySmsView')]
+assert 'syncContacts = false;' in phone
+assert 'syncContactsBox = new CheckBoxCell' not in phone
+assert 'testBackendCheckBox = new CheckBoxCell' not in phone
+assert 'showDebugMenu();' not in phone
+assert 'setPadding(0, dp(32), 0, dp(152));' in phone
 assert '@mipmap/maxgram_launcher' in (resources / 'values-v31/styles.xml').read_text()
 for style in resources.rglob('styles.xml'):
     if 'windowSplashScreenAnimatedIcon' in style.read_text():
         assert '@mipmap/maxgram_launcher' in style.read_text()
-print('Compact login layout, hidden contact sync and MAX splash artwork checked')
+print('Login footer space, removed Telegram debug/contact controls and MAX splash artwork checked')
 
 app_build = (client / 'TMessagesProj/build.gradle').read_text()
 assert "path 'jni/CMakeLists.txt'\n            version '3.31.6'" in app_build

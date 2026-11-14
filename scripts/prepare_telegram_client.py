@@ -398,10 +398,18 @@ def configure_phone_login(target):
     phone_end = source.index("public class LoginActivitySmsView", phone_start)
     phone = source[phone_start:phone_end]
     phone = phone.replace("            setGravity(Gravity.CENTER);",
-                          "            setGravity(Gravity.CENTER);\n            setPadding(0, dp(32), 0, dp(80));", 1)
-    phone = phone.replace("                syncContactsBox = new CheckBoxCell(context, 2);",
-                          "                syncContactsBox = new CheckBoxCell(context, 2);\n                syncContacts = false;\n                syncContactsBox.setVisibility(View.GONE);", 1)
+                          "            setGravity(Gravity.CENTER);\n            setPadding(0, dp(32), 0, dp(152));", 1)
+    # Neither Telegram contact sync nor its test datacenter exists in MAX. Remove
+    # their rows rather than leaving hidden controls in the layout calculation.
+    first = phone.index("            if (newAccount && activityMode == MODE_LOGIN) {", phone.index("            int bottomMargin = 72;"))
+    last = phone.index("            if (bottomMargin > 0 && !AndroidUtilities.isSmallScreen()) {", first)
+    phone = phone[:first] + "            syncContacts = false;\n\n" + phone[last:]
+    first = phone.index("            titleView.setOnClickListener(v -> {")
+    last = phone.index("            subtitleView = ", first)
+    phone = phone[:first] + phone[last:]
     source = source[:phone_start] + phone + source[phone_end:]
+    source = source.replace("private boolean syncContacts = true;", "private boolean syncContacts = false;")
+    source = source.replace('syncContacts = savedInstanceState.getInt("syncContacts", 1) == 1;', 'syncContacts = false;')
     login.write_text(source)
     runtime = JAVA_PREFIX + "TgMaxRuntime"
     add_after_opening(login, r"private void loadCountries\(\)", f"        if ({runtime}.enabled()) return;\n")

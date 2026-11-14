@@ -45,7 +45,10 @@ def assert_login_layout(nodes, strings, qualifier):
         return min(c, z) > max(a, x) and min(d, w) > max(b, y)
     assert not overlaps(policy, phone), 'Legal text overlaps the phone input'
     assert not overlaps(policy, done), 'Legal text overlaps Continue'
-    assert not any('Sync Contacts' in n.get('text', '') for n in nodes)
+    phone_bottom = list(map(int, re.findall(r'\d+', phone.get('bounds'))))[3]
+    policy_top = list(map(int, re.findall(r'\d+', policy.get('bounds'))))[1]
+    assert policy_top - phone_bottom >= 8, 'No space between the phone input and legal text'
+    assert not any(n.get('checkable') == 'true' for n in nodes), 'Telegram-only login checkbox remains visible'
 
 
 try:
@@ -55,6 +58,8 @@ try:
     assert any(n.get('content-desc') == 'Help' for n in nodes)
     assert any(n.get('content-desc') == 'Log in by QR code' for n in nodes)
     assert any('privacy policy' in n.get('text', '') and 'user agreement' in n.get('text', '') for n in nodes)
+    default_strings = {n.get('name'): n.text for n in ET.parse(Path('core/localization/src/main/res/values/strings.xml')).findall('string')}
+    assert_login_layout(nodes, default_strings, 'values')
     country = next(n for n in nodes if n.get('content-desc') == 'Country')
     tap(country.attrib)
     expected = ['Russia', 'Belarus', 'Azerbaijan', 'Armenia']
@@ -83,6 +88,7 @@ try:
         assert any(n.get('text') == '7' for n in nodes)
         assert_login_layout(nodes, strings, qualifier)
         Path(f'login-{qualifier}.png').write_bytes(adb('exec-out', 'screencap', '-p'))
+        Path(f'login-{qualifier}.xml').write_bytes(Path('localized-login.xml').read_bytes())
         language_label = strings['language_title']
     print('Published MAXGRAM APK: phone copy, ordered countries, help, legal footer and seven language switches checked')
 except Exception:
